@@ -4,49 +4,73 @@ type Instruction = Char
 
 type Instructions = String
 
-type Key = Int
+type Key = Char
 
-keys :: [[Int]]
-keys = [ [1, 2, 3]
-       , [4, 5, 6]
-       , [7, 8, 9]
-       ]
+type KeyPad = [[Char]]
 
-updateKey :: CoOrd -> Instruction -> CoOrd
-updateKey (x, y) 'U' = (x, min 2 $ y + 1)
-updateKey (x, y) 'D' = (x, max 0 $ y - 1)
-updateKey (x, y) 'L' = (max 0 $ x - 1, y)
-updateKey (x, y) 'R' = (min 2 $ x + 1, y)
+keyPad1 :: KeyPad
+keyPad1 = [ ['0', '0', '0', '0', '0']
+          , ['0', '1', '2', '3', '0']
+          , ['0', '4', '5', '6', '0']
+          , ['0', '7', '8', '9', '0']
+          , ['0', '0', '0', '0', '0']
+          ]
 
-keyFromPos :: CoOrd -> Key
-keyFromPos (x, y) = (keys !! (2 - y)) !! x
+keyPad2 :: KeyPad
+keyPad2 = [ ['0', '0', '0', '0', '0', '0', '0']
+          , ['0', '0', '0', '1', '0', '0', '0']
+          , ['0', '0', '2', '3', '4', '0', '0']
+          , ['0', '5', '6', '7', '8', '9', '0']
+          , ['0', '0', 'A', 'B', 'C', '0', '0']
+          , ['0', '0', '0', 'D', '0', '0', '0']
+          , ['0', '0', '0', '0', '0', '0', '0']
+          ]
 
-getPosition :: CoOrd -> Instructions -> CoOrd
-getPosition pos []     = pos
-getPosition pos (x:xs) = getPosition (updateKey pos x) xs
+tryUpdate :: KeyPad -> CoOrd -> CoOrd -> CoOrd
+tryUpdate keyPad defaultPos pos =
+    if keyFromPos keyPad pos == '0'
+    then defaultPos
+    else pos
 
-getPositions :: CoOrd -> [Instructions] -> [CoOrd]
-getPositions _   []     = []
-getPositions pos (x:xs) =
+updateKey :: KeyPad -> CoOrd -> Instruction -> CoOrd
+updateKey keyPad pos instruction = tryUpdate keyPad pos $ go pos instruction
+    where go (x, y) 'U' = (x, y + 1)
+          go (x, y) 'D' = (x, y - 1)
+          go (x, y) 'L' = (x - 1, y)
+          go (x, y) 'R' = (x + 1, y)
+
+keyFromPos :: KeyPad -> CoOrd -> Key
+keyFromPos keyPad (x, y) = (keyPad !! ((length keyPad - 1) - y)) !! x
+
+getPosition :: KeyPad -> CoOrd -> Instructions -> CoOrd
+getPosition _      pos []     = pos
+getPosition keyPad pos (x:xs) = getPosition keyPad (updateKey keyPad pos x) xs
+
+getPositions :: KeyPad -> CoOrd -> [Instructions] -> [CoOrd]
+getPositions _      _   []     = []
+getPositions keyPad pos (x:xs) =
     let
-        newPos = getPosition pos x
+        newPos = getPosition keyPad pos x
     in
-        newPos : getPositions newPos xs
+        newPos : getPositions keyPad newPos xs
 
-concatWithString :: Int -> String -> String
-concatWithString x xs = show x ++ xs
+writeKeys :: KeyPad -> CoOrd -> [Instructions] -> IO ()
+writeKeys keyPad pos =
+    putStrLn
+    . (map (keyFromPos keyPad))
+    . (getPositions keyPad pos)
 
-writeKeys :: [Instructions] -> IO ()
-writeKeys = putStrLn
-            . (foldr concatWithString "")
-            . (map keyFromPos)
-            . (getPositions (1, 1))
-
-main :: IO()
-main = do
+getAndWrite :: KeyPad -> CoOrd -> IO ()
+getAndWrite keyPad pos = do
     inst1 <- getLine
     inst2 <- getLine
     inst3 <- getLine
     inst4 <- getLine
     inst5 <- getLine
-    writeKeys [inst1, inst2, inst3, inst4, inst5]
+    writeKeys keyPad pos [inst1, inst2, inst3, inst4, inst5]
+
+main1 :: IO ()
+main1 = getAndWrite keyPad1 (2, 2)
+
+main2 :: IO ()
+main2 = getAndWrite keyPad2 (1, 3)
