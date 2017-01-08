@@ -1,6 +1,7 @@
-import Data.List (sort, sortBy, group)
+import Data.List (sort, sortBy, group, intercalate)
 import Data.List.Split (splitOn)
 import Data.Ord (comparing)
+import Data.Char (ord, chr)
 
 sortByLengthDesc :: String -> String -> Ordering
 sortByLengthDesc = flip $ comparing length
@@ -35,9 +36,34 @@ sumSectorIds lineCount = do
     let count = if top5Letters letters == check then sectorId + idSum else idSum
     return count
 
-main :: IO ()
-main = do
+rotateLetter :: Int -> Char -> Char
+rotateLetter _ '-'   = ' '
+rotateLetter turns l = chr $ (rem (ord l - 97 + turns) 26) + 97
+
+decipher :: Int -> String -> String
+decipher _     []     = []
+decipher turns (x:xs) = (rotateLetter turns x) : decipher turns xs
+
+decipherCodes :: Int -> IO [(Int, String)]
+decipherCodes 0         = return []
+decipherCodes lineCount = do
+    line  <- getLine
+    codes <- decipherCodes (lineCount - 1)
+    let letterSplit = splitOn "-" line
+    let idCheck = splitOn "[" $ last letterSplit
+    let sectorId = read (head idCheck) :: Int
+    let deciphered = decipher sectorId $ intercalate "-" $ init letterSplit
+    return ((sectorId, deciphered) : codes)
+
+readAndWrite :: Show a => (Int -> IO a) -> IO ()
+readAndWrite method = do
     lineCount <- getLine
     let n = read lineCount :: Int
-    idSum     <- sumSectorIds n
-    putStrLn . show $ idSum
+    result    <- method n
+    putStrLn . show $ result
+
+main1 :: IO ()
+main1 = readAndWrite sumSectorIds
+
+main2 :: IO ()
+main2 = readAndWrite decipherCodes
