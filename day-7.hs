@@ -52,29 +52,22 @@ supportsSSL :: IP -> Bool
 supportsSSL ip =
     hasABA (subRegex (mkRegex regexStr) ip "") $ foldr getBAB [] $ matchBrackets ip
 
-countTLSSupport :: Int -> IO Int
-countTLSSupport 0         = return 0
-countTLSSupport lineCount = do
+countSupport :: (IP -> Bool) -> Int -> IO Int
+countSupport _ 0         = return 0
+countSupport f lineCount = do
     line  <- getLine
-    count <- countTLSSupport (lineCount - 1)
-    return $ (+) count $ if supportsTLS line then 1 else 0
+    count <- countSupport f (lineCount - 1)
+    return $ (+) count $ if f line then 1 else 0
 
-countSSLSupport :: Int -> IO Int
-countSSLSupport 0         = return 0
-countSSLSupport lineCount = do
-    line  <- getLine
-    count <- countSSLSupport (lineCount - 1)
-    return $ (+) count $ if supportsSSL line then 1 else 0
-
-readAndWrite :: Show a => (Int -> IO a) -> IO ()
+readAndWrite :: (IP -> Bool) -> IO ()
 readAndWrite method = do
     lineCount <- getLine
     let n = read lineCount :: Int
-    result    <- method n
+    result    <- countSupport method n
     putStrLn . show $ result
 
 main1 :: IO ()
-main1 = readAndWrite $ countTLSSupport
+main1 = readAndWrite $ supportsTLS
 
 main2 :: IO ()
-main2 = readAndWrite $ countSSLSupport
+main2 = readAndWrite $ supportsSSL
