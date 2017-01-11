@@ -1,5 +1,6 @@
 import Text.Regex (mkRegex, matchRegex, Regex)
-import Data.List (nub)
+import Data.List (nub, sortBy, groupBy)
+import Data.Ord (comparing)
 
 data Instruction =
       Rect Int Int
@@ -72,8 +73,48 @@ updateDisplay instruction on =
 createDisplay :: On -> Int -> IO Int
 createDisplay on 0         = return $ length $ nub on
 createDisplay on lineCount = do
-    line  <- getLine
+    line <- getLine
     createDisplay (updateDisplay line on) $ lineCount - 1
+
+fillBlanks :: [(Int, Int)] -> String
+fillBlanks []                 = []
+fillBlanks ((a, b):(c, d):xs) =
+    ['◼'] ++ (take (c - a - 1) $ repeat ' ') ++ (fillBlanks ((c, d) : xs))
+fillBlanks ((x, y):[])
+    | x < 49                  = ['◼'] ++ (take (49 - x) $ repeat ' ')
+    | otherwise               = ['◼']
+
+fillToText :: [(Int, Int)] -> [String] -> [String]
+fillToText on@((x, y):xs) txtRows
+    | x > 0     = ((take (x - 0) $ repeat ' ') ++ (fillBlanks on)) : txtRows
+    | otherwise = (fillBlanks on) : txtRows
+
+displayToText :: [[(Int, Int)]] -> [String]
+displayToText = foldr fillToText []
+
+sortByFst :: (Int, Int) -> (Int, Int) -> Ordering
+sortByFst = comparing fst
+
+sortBySnd :: (Int, Int) -> (Int, Int) -> Ordering
+sortBySnd = comparing snd
+
+sortByRowThenColumn :: (Int, Int) -> (Int, Int) -> Ordering
+sortByRowThenColumn = mconcat [sortBySnd, sortByFst]
+
+toRows :: On -> [[(Int, Int)]]
+toRows = (groupBy (\x y -> snd x == snd y)) . (sortBy sortByRowThenColumn)
+
+printLines :: [String] -> IO ()
+printLines []     = return ()
+printLines (x:xs) = do
+    putStrLn x
+    printLines xs
+
+printDisplay :: Int -> On -> IO ()
+printDisplay 0         on = printLines $ displayToText . toRows . nub $ on
+printDisplay lineCount on = do
+    line <- getLine
+    printDisplay (lineCount - 1) $ updateDisplay line on
 
 readAndWrite :: (Int -> IO Int) -> IO ()
 readAndWrite method = do
@@ -84,3 +125,9 @@ readAndWrite method = do
 
 main1 :: IO ()
 main1 = readAndWrite $ createDisplay []
+
+main2 :: IO ()
+main2 = do
+    lineCount <- getLine
+    let n = read lineCount :: Int
+    printDisplay n []
