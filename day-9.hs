@@ -19,19 +19,27 @@ getMarker str =
     Just [a, b] -> (read a :: Int, read b :: Int)
     _           -> (0, 0)
 
-decompress :: String -> String
-decompress []   = []
-decompress t@(x:xs)
-    | x /= '('  = x : decompress xs
+decompress :: Bool -> String -> String
+decompress _             []       = []
+decompress decompressAll t@(x:xs)
+    | x /= '('  = x : decompress decompressAll xs
     | otherwise =
         let
             markerStr              = spanWhile (/=')') t
             (takeChar, repetition) = getMarker $ fst markerStr
-            duped                  = take repetition $ repeat $ take takeChar $ snd markerStr
+            duped                  = concat $ take repetition $ repeat $ take takeChar $ snd markerStr
+            f                      = flip (++) $ decompress decompressAll $ drop takeChar $ snd markerStr
         in
-            (concat duped) ++ (decompress $ drop takeChar $ snd markerStr)
+            if decompressAll
+            then f $ decompress decompressAll duped
+            else f duped
 
-main :: IO ()
-main = do
+main1 :: IO ()
+main1 = do
     str <- getLine
-    putStrLn . show . length $ decompress str
+    putStrLn . show . length $ decompress False str
+
+main2 :: IO ()
+main2 = do
+    str <- getLine
+    putStrLn . show . length $ decompress True str
