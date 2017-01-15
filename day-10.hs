@@ -112,20 +112,29 @@ hasBothChips r =
         then Just (h, l)
         else Nothing
 
+data InstructionType =
+      NoRobot
+    | Incomplete
+    | Updated Places
+
+runInstruction :: String -> Instruction -> Places -> InstructionType
+runInstruction id (n, cType, dest) ps =
+    case M.lookup (rId n) ps of
+    Nothing             -> NoRobot
+    Just (PlaceR robot) -> case hasBothChips robot of
+                           Nothing     -> Incomplete
+                           Just (h, l) -> Updated $ M.update (applyValue cType h l) id ps
+
 runInstructions :: Places -> [Instruction] -> Places
-runInstructions ps []      = ps
-runInstructions ps (i@(n, cType, dest):ins) =
+runInstructions ps []                   = ps
+runInstructions ps (i@(_, _, dest):ins) =
     case dest of
-    Bot b    -> case M.lookup (rId n) ps of
-                Nothing    -> runInstructions ps ins
-                Just (PlaceR robot) -> case hasBothChips robot of
-                                       Nothing     -> runInstructions ps $ ins ++ [i]
-                                       Just (h, l) -> runInstructions (M.update (applyValue cType h l) (rId b) ps) ins
-    Output o -> case M.lookup (rId n) ps of
-                Nothing    -> runInstructions ps ins
-                Just (PlaceR robot) -> case hasBothChips robot of
-                                       Nothing     -> runInstructions ps $ ins ++ [i]
-                                       Just (h, l) -> runInstructions (M.update (applyValue cType h l) (bId o) ps) ins
+    Bot b    -> go $ rId b
+    Output o -> go $ bId o
+    where go id = case runInstruction id i ps of
+                  NoRobot     -> runInstructions ps ins
+                  Incomplete  -> runInstructions ps $ ins ++ [i]
+                  Updated ps' -> runInstructions ps' ins
 
 filterRobots :: Int -> Int -> (String, Place) -> Bool
 filterRobots h l (_, (PlaceR Robot{ high = rh, low = rl })) =
